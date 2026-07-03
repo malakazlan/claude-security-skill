@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+# scan outputs
+security-report.md
+findings.sarif
+.security-out/
+# example app runtime
+examples/vulnerable-app/app.db
