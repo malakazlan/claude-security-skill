@@ -15,7 +15,7 @@ TRIVY_VER="0.67.2"
 GITLEAKS_VER="8.28.0"
 TRUFFLEHOG_VER="3.90.9"
 GOSEC_VER="2.22.9"
-SCHEMATHESIS_VER="4.4.5"
+SCHEMATHESIS_VER="4.4.4"
 
 info() { printf '\033[36m[install]\033[0m %s\n' "$1"; }
 warn() { printf '\033[33m[skip]\033[0m %s\n' "$1"; }
@@ -27,12 +27,15 @@ ARCH="$(uname -m)"
 # ---- Python-based scanners (pip) -------------------------------------------
 if command -v pip3 >/dev/null 2>&1; then
   info "installing Python scanners via pip"
-  pip3 install --quiet \
+  # One pip call per scanner: a bad pin or resolver conflict in one package
+  # must not take the others down with it.
+  for spec in \
     "semgrep==${SEMGREP_VER}" \
     "bandit==${BANDIT_VER}" \
     "checkov==${CHECKOV_VER}" \
-    "schemathesis==${SCHEMATHESIS_VER}" \
-    && ok "semgrep, bandit, checkov, schemathesis"
+    "schemathesis==${SCHEMATHESIS_VER}"; do
+    pip3 install --quiet "$spec" && ok "$spec" || warn "$spec install failed"
+  done
   # AI triage SDK + config parsing
   pip3 install --quiet anthropic pyyaml && ok "anthropic SDK, pyyaml"
 else

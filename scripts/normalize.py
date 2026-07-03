@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import json
 from pathlib import Path
 
@@ -43,6 +44,18 @@ def dedupe(findings: list[Finding]) -> list[Finding]:
                     if tag not in f.tags:
                         f.tags.append(tag)
     return survivors
+
+
+def apply_ignore_paths(findings: list[Finding],
+                       patterns: list[str]) -> list[Finding]:
+    """Drop findings whose file path matches any ignore_paths glob from the
+    config. Paths are compared with forward slashes regardless of platform."""
+    if not patterns:
+        return list(findings)
+    def ignored(f: Finding) -> bool:
+        path = f.file.replace("\\", "/")
+        return any(fnmatch.fnmatch(path, pat) for pat in patterns)
+    return [f for f in findings if not ignored(f)]
 
 
 def load_baseline(path: str | Path | None) -> set[str]:

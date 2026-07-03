@@ -10,6 +10,9 @@ fail_on: high
 ignore_paths:
   - "tests/fixtures/**"
   - "**/*.min.js"
+  # Deliberately vulnerable demo app shipped with this repo — its planted
+  # findings (fake AWS key, SQLi, debug=True) must not fail our own gate.
+  - "examples/**"
 
 # Per-scanner overrides. Omit a scanner to use its defaults.
 # Keys: enabled (bool), timeout (seconds), args (extra CLI flags list),

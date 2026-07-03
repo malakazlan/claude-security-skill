@@ -25,7 +25,7 @@ from findings import SEVERITY_RANK, SEVERITIES  # noqa: E402
 from detect import detect  # noqa: E402
 from config import load_config  # noqa: E402
 from normalize import (dedupe, load_baseline, apply_suppressions,  # noqa: E402
-                       write_sarif)
+                       apply_ignore_paths, write_sarif)
 from report import write_report  # noqa: E402
 from scanners import CORE_SCANNERS, SchemathesisScanner, ZapBaselineScanner  # noqa: E402
 import triage as triage_mod  # noqa: E402
@@ -92,7 +92,13 @@ def main(argv=None) -> int:
     all_findings = [f for r in results for f in r.findings]
     print(f"[*] {len(all_findings)} raw finding(s) before dedupe")
 
-    # ---- normalize: dedupe, baseline, suppressions --------------------
+    # ---- normalize: ignore_paths, dedupe, baseline, suppressions ------
+    before = len(all_findings)
+    all_findings = apply_ignore_paths(all_findings,
+                                      config.get("ignore_paths", []))
+    if before != len(all_findings):
+        print(f"[*] {before - len(all_findings)} finding(s) dropped "
+              "via ignore_paths")
     all_findings = dedupe(all_findings)
     apply_suppressions(all_findings, config.get("suppressions", []))
     baseline = load_baseline(args.baseline)
@@ -102,6 +108,7 @@ def main(argv=None) -> int:
     # ---- AI triage (optional) -----------------------------------------
     all_findings, semantic, triage_msg = triage_mod.run_triage(
         all_findings, repo, profile, config)
+    semantic = apply_ignore_paths(semantic, config.get("ignore_paths", []))
     print(f"[*] {triage_msg}")
 
     # ---- write outputs -------------------------------------------------

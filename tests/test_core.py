@@ -8,7 +8,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT))
 
 from findings import Finding, normalize_severity
-from normalize import dedupe, to_sarif, load_baseline, apply_suppressions
+from normalize import (dedupe, to_sarif, load_baseline, apply_suppressions,
+                       apply_ignore_paths)
 from triage import _parse_json
 
 
@@ -71,6 +72,28 @@ def test_suppression_marks_finding():
     apply_suppressions([f], [{"fingerprint": f.fingerprint, "justification": "test fixture"}])
     assert f.suppressed is True
     assert "test fixture" in f.suppress_reason
+
+
+def test_ignore_paths_drops_matching_findings():
+    kept = Finding("gitleaks", "aws", "high", "src/app.py", 3, "key")
+    ignored = Finding("gitleaks", "aws", "high", "examples/vulnerable-app/app.py", 16, "key")
+    out = apply_ignore_paths([kept, ignored], ["examples/**"])
+    assert out == [kept]
+
+
+def test_ignore_paths_handles_windows_separators():
+    f = Finding("gitleaks", "aws", "high", "examples\\vulnerable-app\\app.py", 16, "key")
+    assert apply_ignore_paths([f], ["examples/**"]) == []
+
+
+def test_ignore_paths_nested_glob():
+    f = Finding("semgrep", "r", "high", "static/js/vendor/lib.min.js", 1, "m")
+    assert apply_ignore_paths([f], ["**/*.min.js"]) == []
+
+
+def test_ignore_paths_empty_patterns_keeps_all():
+    f = Finding("semgrep", "r", "high", "examples/x.py", 1, "m")
+    assert apply_ignore_paths([f], []) == [f]
 
 
 def test_triage_parse_fails_closed():
