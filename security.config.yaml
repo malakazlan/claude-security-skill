@@ -1,0 +1,42 @@
+# claude-security configuration — drop this in the ROOT of the repo you scan.
+# Every key is optional; the defaults below are what the tool uses if the file
+# is absent. Delete anything you don't need to override.
+
+# CI gate threshold: the scan exits non-zero if any unsuppressed, non-semantic
+# finding is at or above this severity. One of: critical | high | medium | low | info
+fail_on: high
+
+# Glob patterns to exclude from the report (relative to the repo root).
+ignore_paths:
+  - "tests/fixtures/**"
+  - "**/*.min.js"
+
+# Per-scanner overrides. Omit a scanner to use its defaults.
+# Keys: enabled (bool), timeout (seconds), args (extra CLI flags list),
+#       image (trivy-image only: the image ref to scan).
+scanners:
+  semgrep:
+    enabled: true
+    timeout: 600
+    # For fully air-gapped runs, vendor rules locally and point to them:
+    # args: ["--config", "path/to/vendored/rules"]
+  trufflehog:
+    timeout: 600
+  trivy-image:
+    # trivy-image only runs if you name an image here:
+    # image: "myorg/myapp:latest"
+    enabled: true
+
+# AI triage layer. Still requires ANTHROPIC_API_KEY in the environment.
+triage:
+  enabled: true
+  model: claude-sonnet-4-6      # or set CLAUDE_SECURITY_MODEL env var
+  max_findings: 200             # cap sent to the API (cost control)
+  batch_size: 15                # findings per API request
+
+# Suppressions: silence a specific finding by its fingerprint (shown in the
+# SARIF `partialFingerprints.csFingerprint`). A justification is REQUIRED —
+# suppressions without one are ignored.
+suppressions:
+  # - fingerprint: "a1b2c3d4e5f6a7b8"
+  #   justification: "False positive — test-only fixture, not shipped."
