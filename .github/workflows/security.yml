@@ -27,14 +27,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check out claude-security
-        uses: actions/checkout@v4
-        with:
-          repository: your-org/claude-security
-          path: .claude-security
-
+      # This repo IS claude-security, so run the scripts from the checkout
+      # itself. Consumers of this workflow should instead check out this repo
+      # into .claude-security and call the scripts from there.
       - name: Install scanners
-        run: ./.claude-security/install.sh
+        run: ./install.sh
 
       - name: Run security audit
         id: audit
@@ -42,15 +39,16 @@ jobs:
           # Optional: enables the AI triage layer. Remove to run deterministic-only.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          python3 .claude-security/scripts/scan.py "$GITHUB_WORKSPACE" \
+          python3 scripts/scan.py "$GITHUB_WORKSPACE" \
             --fail-on high \
             --out "$GITHUB_WORKSPACE/.security-out"
         # Keep going so we always upload SARIF + report, then gate at the end.
         continue-on-error: true
 
       - name: Upload SARIF to code scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        # Guard on the file so a scan crash doesn't cascade into an upload error.
+        if: always() && hashFiles('.security-out/findings.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: .security-out/findings.sarif
 
