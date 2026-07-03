@@ -1,0 +1,68 @@
+name: Security audit
+
+# Runs claude-security as a gate on pull requests. Fails the check if new
+# findings at/above the threshold appear, and uploads SARIF to GitHub code
+# scanning so findings render inline on the PR.
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for secret scanning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check out claude-security
+        uses: actions/checkout@v4
+        with:
+          repository: your-org/claude-security
+          path: .claude-security
+
+      - name: Install scanners
+        run: ./.claude-security/install.sh
+
+      - name: Run security audit
+        id: audit
+        env:
+          # Optional: enables the AI triage layer. Remove to run deterministic-only.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 .claude-security/scripts/scan.py "$GITHUB_WORKSPACE" \
+            --fail-on high \
+            --out "$GITHUB_WORKSPACE/.security-out"
+        # Keep going so we always upload SARIF + report, then gate at the end.
+        continue-on-error: true
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .security-out/findings.sarif
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: .security-out/security-report.md
+
+      - name: Enforce gate
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "::error::Security gate failed — see the report artifact and code scanning tab."
+          exit 1
