@@ -1,0 +1,16 @@
+# Core: only the standard library is required to RUN the orchestrator.
+# These enable optional features.
+
+# Config file parsing (security.config.yaml). Without it, defaults are used.
+pyyaml>=6.0
+
+# AI triage layer. Without it (or without ANTHROPIC_API_KEY), triage is skipped
+# and raw deterministic findings are still produced.
+anthropic>=0.40.0
+
+# --- Python-based scanners (installed by install.sh; listed here for
+#     reference / `pip install -r requirements.txt` convenience) ---
+semgrep>=1.168.0
+bandit>=1.8.0
+checkov>=3.2.0
+schemathesis>=4.4.0
